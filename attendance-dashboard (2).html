@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AttendIQ — Student Attendance Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0c12;
+    --surface: #111420;
+    --surface2: #181c2e;
+    --border: #252a42;
+    --safe: #00e5a0;
+    --safe-dim: rgba(0,229,160,0.12);
+    --warn: #ffc84a;
+    --warn-dim: rgba(255,200,74,0.12);
+    --danger: #ff4d6d;
+    --danger-dim: rgba(255,77,109,0.12);
+    --accent: #7c6bff;
+    --accent-dim: rgba(124,107,255,0.12);
+    --text: #e8eaf6;
+    --muted: #6b7299;
+    --radius: 14px;
+  }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0 0 60px 0;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 36px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: rgba(10,12,18,0.92);
+    backdrop-filter: blur(16px);
+    z-index: 100;
+  }
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.5rem;
+    letter-spacing: -1px;
+    color: var(--text);
+  }
+  .logo span { color: var(--accent); }
+  .header-meta {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.6;
+  }
+  #clock { color: var(--accent); font-weight: 500; }
+
+  .report-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    letter-spacing: 0.3px;
+  }
+  .report-btn:hover { border-color: var(--accent); background: var(--accent-dim); transform: translateY(-1px); }
+  .report-btn:active { transform: translateY(0); }
+  .report-btn svg { flex-shrink: 0; }
+
+  /* MAIN LAYOUT */
+  .container { max-width: 1200px; margin: 0 auto; padding: 36px 24px; }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .stat-card:hover::before { opacity: 1; }
+  .stat-card.safe { border-color: rgba(0,229,160,0.3); }
+  .stat-card.safe::before { background: var(--safe-dim); }
+  .stat-card.warn { border-color: rgba(255,200,74,0.3); }
+  .stat-card.warn::before { background: var(--warn-dim); }
+  .stat-card.danger { border-color: rgba(255,77,109,0.3); }
+  .stat-card.danger::before { background: var(--danger-dim); }
+  .stat-card.accent { border-color: rgba(124,107,255,0.3); }
+  .stat-card.accent::before { background: var(--accent-dim); }
+  .stat-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .stat-card.safe .stat-value { color: var(--safe); }
+  .stat-card.warn .stat-value { color: var(--warn); }
+  .stat-card.danger .stat-value { color: var(--danger); }
+  .stat-card.accent .stat-value { color: var(--accent); }
+  .stat-sub { font-size: 0.68rem; color: var(--muted); margin-top: 6px; }
+
+  /* TWO COLUMN */
+  .two-col { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+
+  /* PANEL */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .panel-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .panel-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: -0.3px;
+  }
+  .panel-body { padding: 20px 24px; }
+
+  /* SUBJECT TABLE */
+  .subject-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .subject-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    transition: border-color 0.2s, transform 0.15s;
+    animation: slideIn 0.3s ease both;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .subject-card:hover { transform: translateX(2px); }
+  .subject-card.safe { border-left: 3px solid var(--safe); }
+  .subject-card.warn { border-left: 3px solid var(--warn); }
+  .subject-card.danger { border-left: 3px solid var(--danger); }
+
+  .subj-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .subj-meta { font-size: 0.68rem; color: var(--muted); }
+  .subj-right { text-align: right; }
+
+  .pct-big {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.6rem;
+    line-height: 1;
+  }
+  .safe .pct-big { color: var(--safe); }
+  .warn .pct-big { color: var(--warn); }
+  .danger .pct-big { color: var(--danger); }
+
+  .risk-badge {
+    display: inline-block;
+    font-size: 0.58rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+    margin-top: 4px;
+  }
+  .safe .risk-badge { background: var(--safe-dim); color: var(--safe); }
+  .warn .risk-badge { background: var(--warn-dim); color: var(--warn); }
+  .danger .risk-badge { background: var(--danger-dim); color: var(--danger); }
+
+  /* PROGRESS BAR */
+  .prog-bar-wrap {
+    margin-top: 8px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .prog-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .safe .prog-bar-fill { background: var(--safe); }
+  .warn .prog-bar-fill { background: var(--warn); }
+  .danger .prog-bar-fill { background: var(--danger); }
+
+  /* CLASSES NEEDED PILL */
+  .classes-needed {
+    margin-top: 6px;
+    font-size: 0.65rem;
+    color: var(--muted);
+  }
+  .classes-needed strong { color: var(--danger); }
+
+  /* DELETE BTN */
+  .del-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 4px;
+    border-radius: 6px;
+    transition: color 0.2s, background 0.2s;
+    line-height: 1;
+  }
+  .del-btn:hover { color: var(--danger); background: var(--danger-dim); }
+
+  /* ADD FORM */
+  .add-form { display: flex; flex-direction: column; gap: 14px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 6px;
+  }
+  input, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  input:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+  input::placeholder { color: var(--muted); }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.78rem;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .toggle-switch {
+    width: 34px;
+    height: 18px;
+    background: var(--border);
+    border-radius: 20px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .toggle-switch.on { background: var(--accent); }
+  .toggle-switch::after {
+    content: '';
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: white;
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    transition: transform 0.2s;
+  }
+  .toggle-switch.on::after { transform: translateX(16px); }
+
+  .circular-row { display: none; }
+  .circular-row.show { display: grid; }
+
+  .add-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: opacity 0.2s, transform 0.15s;
+  }
+  .add-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+  .add-btn:active { transform: translateY(0); }
+
+  /* MINI TIPS */
+  .tip-box {
+    background: var(--accent-dim);
+    border: 1px solid rgba(124,107,255,0.2);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-top: 16px;
+  }
+  .tip-box b { color: var(--accent); }
+
+  /* SETTINGS MODAL */
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; z-index: 1000;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-content {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); width: 100%; max-width: 400px;
+    padding: 24px; position: relative; animation: slideIn 0.3s ease;
+  }
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 700; margin-bottom: 20px; }
+  .modal-close { position: absolute; top: 16px; right: 16px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.2rem; line-height: 1; }
+  .modal-close:hover { color: var(--text); }
+  .modal-actions { margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px; }
+  .btn-secondary { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 0.8rem; }
+  .btn-secondary:hover { background: var(--border); }
+  .btn-primary { background: var(--accent); border: none; color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: 'DM Mono', monospace; font-size: 0.8rem; font-weight: bold; }
+  .btn-primary:hover { opacity: 0.9; }
+
+  .settings-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); cursor: pointer; transition: all 0.2s;
+  }
+  .settings-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+  .settings-btn:active { transform: translateY(0); }
+
+  /* OVERALL GAUGE */
+  .gauge-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 20px;
+    gap: 10px;
+  }
+  .gauge-ring {
+    width: 120px;
+    height: 120px;
+    position: relative;
+  }
+  .gauge-ring svg {
+    transform: rotate(-90deg);
+    width: 120px;
+    height: 120px;
+  }
+  .gauge-ring .track { fill: none; stroke: var(--border); stroke-width: 10; }
+  .gauge-ring .fill { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(0.34,1.56,0.64,1), stroke 0.4s; }
+  .gauge-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .gauge-pct {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+  .gauge-lbl { font-size: 0.58rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.8;
+  }
+  .empty-icon { font-size: 3rem; margin-bottom: 12px; display: block; }
+
+  /* ALERT BANNER */
+  .alert-banner {
+    margin-bottom: 20px;
+    background: var(--danger-dim);
+    border: 1px solid rgba(255,77,109,0.3);
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-size: 0.75rem;
+    color: var(--danger);
+    display: none;
+    align-items: center;
+    gap: 10px;
+    animation: slideIn 0.3s ease;
+  }
+  .alert-banner.show { display: flex; }
+
+  /* CIRCULAR INFO */
+  .circular-info {
+    font-size: 0.65rem;
+    color: var(--warn);
+    margin-top: 4px;
+  }
+
+  /* DUTY LEAVE BOX */
+  .duty-box {
+    margin-top: 8px;
+    background: rgba(124,107,255,0.08);
+    border: 1px solid rgba(124,107,255,0.2);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.65rem;
+    color: var(--accent);
+    line-height: 1.6;
+  }
+  .duty-box b { font-weight: 700; }
+
+  /* IMPOSSIBLE BOX */
+  .impossible-box {
+    margin-top: 8px;
+    background: rgba(255,77,109,0.08);
+    border: 1px dashed rgba(255,77,109,0.4);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.65rem;
+    color: var(--danger);
+    line-height: 1.6;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .two-col { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 500px) {
+    header { padding: 16px 18px; }
+    .container { padding: 20px 14px; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Attend<span>IQ</span></div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <button class="settings-btn" onclick="openSettings()" title="Settings">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </button>
+    <button class="report-btn" onclick="downloadReport()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download Report
+    </button>
+    <div class="header-meta">
+      <div id="clock">—</div>
+      <div id="date-display">—</div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ALERT -->
+  <div class="alert-banner" id="alertBanner">
+    ⚠️ <span id="alertText"></span>
+  </div>
+
+  <!-- STATS ROW -->
+  <div class="stats-row">
+    <div class="stat-card accent">
+      <div class="stat-label">Total Subjects</div>
+      <div class="stat-value" id="statTotal">0</div>
+      <div class="stat-sub">enrolled subjects</div>
+    </div>
+    <div class="stat-card safe">
+      <div class="stat-label">Safe</div>
+      <div class="stat-value" id="statSafe">0</div>
+      <div class="stat-sub">≥ <span id="statSubSafe">75</span>% attendance</div>
+    </div>
+    <div class="stat-card warn">
+      <div class="stat-label">At Risk</div>
+      <div class="stat-value" id="statWarn">0</div>
+      <div class="stat-sub"><span id="statSubWarn1">60</span>–<span id="statSubSafeMinus1">74</span>% zone</div>
+    </div>
+    <div class="stat-card danger">
+      <div class="stat-label">Critical</div>
+      <div class="stat-value" id="statDanger">0</div>
+      <div class="stat-sub">below <span id="statSubWarn2">60</span>%</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+
+    <!-- LEFT: Subject list -->
+    <div>
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">📋 Subject Tracker</span>
+          <div style="font-size:0.68rem;color:var(--muted)">Min. 75% to pass</div>
+        </div>
+        <div class="panel-body">
+          <div class="subject-list" id="subjectList">
+            <div class="empty-state">
+              <span class="empty-icon">📚</span>
+              No subjects added yet.<br>
+              Add your first subject →
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Add form + gauge -->
+    <div style="display:flex;flex-direction:column;gap:20px;">
+
+      <!-- GAUGE -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">📊 Overall Health</span>
+        </div>
+        <div class="gauge-wrap">
+          <div class="gauge-ring">
+            <svg viewBox="0 0 120 120">
+              <circle class="track" cx="60" cy="60" r="50"/>
+              <circle class="fill" id="gaugeFill" cx="60" cy="60" r="50"
+                stroke-dasharray="314"
+                stroke-dashoffset="314"
+                stroke="var(--safe)"/>
+            </svg>
+            <div class="gauge-center">
+              <div class="gauge-pct" id="gaugeText" style="color:var(--safe)">—</div>
+              <div class="gauge-lbl">avg attend.</div>
+            </div>
+          </div>
+          <div style="font-size:0.7rem;color:var(--muted);text-align:center;line-height:1.6" id="gaugeStatus">Add subjects to see your overall attendance health.</div>
+        </div>
+      </div>
+
+      <!-- ADD FORM -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">➕ Add Subject</span>
+        </div>
+        <div class="panel-body">
+          <div class="add-form">
+            <div>
+              <label>Subject Name</label>
+              <input id="subjectName" type="text" placeholder="e.g. Data Structures" />
+            </div>
+            <div class="form-row">
+              <div>
+                <label>Classes Attended</label>
+                <input id="attended" type="number" min="0" placeholder="0" />
+              </div>
+              <div>
+                <label>Total Classes Held</label>
+                <input id="total" type="number" min="0" placeholder="0" />
+              </div>
+            </div>
+
+            <div class="toggle-row" onclick="toggleCircular()">
+              <div class="toggle-switch" id="circularToggle"></div>
+              <span>Circular / Minimum class requirement</span>
+            </div>
+
+            <div class="form-row circular-row" id="circularRow">
+              <div>
+                <label>Total Semester Classes (from circular)</label>
+                <input id="minRequired" type="number" min="0" placeholder="e.g. 60" />
+              </div>
+              <div>
+                <label>Min. % Override</label>
+                <input id="minPct" type="number" min="0" max="100" placeholder="e.g. 75" />
+              </div>
+            </div>
+
+            <button class="add-btn" onclick="addSubject()">Add Subject</button>
+          </div>
+
+          <div class="tip-box">
+            <b>💡 Tips</b><br>
+            &gt; ≥<span id="tipSafe">75</span>% = Safe zone (green)<br>
+            &gt; <span id="tipWarn1">60</span>–<span id="tipSafeMinus1">74</span>% = At risk (yellow)<br>
+            &gt; &lt;<span id="tipWarn2">60</span>% = Critical (red)<br>
+            &gt; 🎖️ Duty leave = teacher marks absent → present<br>
+            &gt; Enable circular for fixed semester class count
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeSettings()">✕</button>
+    <div class="modal-title">⚙️ Settings</div>
+    <div class="add-form">
+      <div>
+        <label>Global Safe Threshold (%)</label>
+        <input type="number" id="settingSafe" min="0" max="100" />
+      </div>
+      <div>
+        <label>At Risk Threshold (%)</label>
+        <input type="number" id="settingWarn" min="0" max="100" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeSettings()">Cancel</button>
+      <button class="btn-primary" onclick="saveSettings()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let subjects = JSON.parse(localStorage.getItem('attendiq_subjects') || '[]');
+  let globalSettings = JSON.parse(localStorage.getItem('attendiq_settings') || '{"safe": 75, "warn": 60}');
+  let circularOn = false;
+
+  function getThreshold(s) {
+    if (!s.circular) return globalSettings.safe;
+    if (s.minPct) return s.minPct;
+    return globalSettings.safe;
+  }
+
+  // CLOCK
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    document.getElementById('date-display').textContent = now.toLocaleDateString('en-IN', {weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  function toggleCircular() {
+    circularOn = !circularOn;
+    document.getElementById('circularToggle').classList.toggle('on', circularOn);
+    document.getElementById('circularRow').classList.toggle('show', circularOn);
+  }
+
+  function getRisk(pct, threshold) {
+    if (pct >= threshold) return 'safe';
+    if (pct >= globalSettings.warn) return 'warn';
+    return 'danger';
+  }
+
+  function getRiskLabel(risk) {
+    if (risk === 'safe') return 'Safe';
+    if (risk === 'warn') return 'At Risk';
+    return 'Critical';
+  }
+
+  function classesNeeded(attended, total, threshold) {
+    const t = threshold / 100;
+    const num = t * total - attended;
+    const den = 1 - t;
+    if (den <= 0) return null;
+    const x = Math.ceil(num / den);
+    return x > 0 ? x : 0;
+  }
+
+  function canBunk(attended, total, threshold) {
+    const t = threshold / 100;
+    const x = Math.floor(attended / t - total);
+    return x > 0 ? x : 0;
+  }
+
+  // How many duty leaves (counted as present) needed to reach threshold
+  // Duty leave: attendance goes to (attended+d)/(total+d) — teacher marks present for duty
+  // OR: already included in total but not in attended — need teacher to count them as present
+  // Model: duty leave = classes already in total but marked absent → teacher converts to present
+  // (attended + d) / total >= threshold/100  →  d >= threshold/100 * total - attended
+  function dutyLeavesNeeded(attended, total, threshold) {
+    const t = threshold / 100;
+    const needed = Math.ceil(t * total - attended);
+    return needed > 0 ? needed : 0;
+  }
+
+  // Check if it's IMPOSSIBLE to reach threshold even attending all remaining classes
+  // remaining = total classes left in semester (we don't know, so check: can they ever reach it?)
+  // For circular: if minRequired is given, max possible = (attended + remaining) where remaining = minRequired - total
+  // Without circular: we can't know future classes. We flag impossible only for circular subjects.
+  function circularImpossible(attended, total, threshold, minRequired) {
+    if (!minRequired) return false;
+    const remainingClasses = Math.max(minRequired - total, 0);
+    const bestCase = attended + remainingClasses;
+    const bestPct = minRequired > 0 ? (bestCase / minRequired) * 100 : 0;
+    return bestPct < threshold;
+  }
+
+  function save() {
+    localStorage.setItem('attendiq_subjects', JSON.stringify(subjects));
+  }
+
+  function render() {
+    const list = document.getElementById('subjectList');
+    if (subjects.length === 0) {
+      list.innerHTML = `<div class="empty-state"><span class="empty-icon">📚</span>No subjects added yet.<br>Add your first subject →</div>`;
+      updateStats([]);
+      updateGauge([]);
+      return;
+    }
+
+    list.innerHTML = '';
+    subjects.forEach((s, i) => {
+      const pct = s.total > 0 ? (s.attended / s.total) * 100 : 0;
+      const threshold = getThreshold(s);
+      const risk = getRisk(pct, threshold);
+      const needed = classesNeeded(s.attended, s.total, threshold);
+      const bunkable = canBunk(s.attended, s.total, threshold);
+      const dutyNeeded = dutyLeavesNeeded(s.attended, s.total, threshold);
+      const impossible = s.circular ? circularImpossible(s.attended, s.total, threshold, s.minRequired) : false;
+
+      // Build bottom info section
+      let infoHTML = '';
+      if (impossible) {
+        // Circular + mathematically impossible
+        infoHTML = `
+          <div class="impossible-box">
+            😞 <b>Cannot reach ${threshold}%</b> — even attending all remaining classes won't help.<br>
+            Best possible: <b>${(() => { const rem = Math.max((s.minRequired||s.total)-s.total,0); return s.minRequired ? (((s.attended+rem)/s.minRequired)*100).toFixed(1) : pct.toFixed(1); })()}%</b>. You must request a <b>condonation</b> or medical/duty leave from the principal.
+          </div>`;
+      } else if (risk === 'safe') {
+        infoHTML = `<div class="classes-needed" style="color:var(--safe)">✓ Can skip <strong style="color:var(--safe)">${bunkable}</strong> more class${bunkable!==1?'es':''} safely</div>`;
+      } else {
+        // At risk or danger — show both: classes to attend + duty leave option
+        infoHTML = `
+          <div class="classes-needed">Need <strong>${needed}</strong> more consecutive class${needed!==1?'es':''} to reach ${threshold}%</div>
+          <div class="duty-box">
+            🎖️ <b>Duty Leave route:</b> Ask teacher to grant <b>${dutyNeeded}</b> duty leave${dutyNeeded!==1?'s':''} — this will mark those absences as present and push you to ${threshold}%+
+          </div>`;
+      }
+
+      const card = document.createElement('div');
+      card.className = `subject-card ${risk}`;
+      card.innerHTML = `
+        <div>
+          <div class="subj-name">
+            ${s.name}
+            ${s.circular ? '<span style="font-size:0.6rem;background:rgba(255,200,74,0.15);color:var(--warn);padding:2px 7px;border-radius:20px;letter-spacing:1px;text-transform:uppercase">circular</span>' : ''}
+            ${impossible ? '<span style="font-size:0.6rem;background:rgba(255,77,109,0.15);color:var(--danger);padding:2px 7px;border-radius:20px;letter-spacing:1px;text-transform:uppercase">⚠ impossible</span>' : ''}
+          </div>
+          <div class="subj-meta">${s.attended} attended &nbsp;/&nbsp; ${s.total} held &nbsp;·&nbsp; min ${threshold}%</div>
+          <div class="prog-bar-wrap"><div class="prog-bar-fill" style="width:${Math.min(pct,100)}%"></div></div>
+          ${infoHTML}
+          ${s.circular && s.minRequired ? `<div class="circular-info">📋 Circular: min ${s.minRequired} total classes in semester</div>` : ''}
+        </div>
+        <div class="subj-right">
+          <div class="pct-big">${pct.toFixed(1)}%</div>
+          <div><span class="risk-badge">${getRiskLabel(risk)}</span></div>
+          <div style="margin-top:8px"><button class="del-btn" onclick="deleteSubject(${i})" title="Remove">✕</button></div>
+        </div>
+      `;
+      list.appendChild(card);
+    });
+
+    updateStats(subjects);
+    updateGauge(subjects);
+    updateAlert(subjects);
+  }
+
+  function updateStats(subs) {
+    document.getElementById('statTotal').textContent = subs.length;
+    document.getElementById('statSafe').textContent = subs.filter(s => {
+      const pct = s.total > 0 ? (s.attended/s.total)*100 : 0;
+      return getRisk(pct, getThreshold(s)) === 'safe';
+    }).length;
+    document.getElementById('statWarn').textContent = subs.filter(s => {
+      const pct = s.total > 0 ? (s.attended/s.total)*100 : 0;
+      return getRisk(pct, getThreshold(s)) === 'warn';
+    }).length;
+    document.getElementById('statDanger').textContent = subs.filter(s => {
+      const pct = s.total > 0 ? (s.attended/s.total)*100 : 0;
+      return getRisk(pct, getThreshold(s)) === 'danger';
+    }).length;
+  }
+
+  function updateGauge(subs) {
+    if (subs.length === 0) {
+      document.getElementById('gaugeText').textContent = '—';
+      document.getElementById('gaugeStatus').textContent = 'Add subjects to see your overall attendance health.';
+      const fill = document.getElementById('gaugeFill');
+      fill.style.strokeDashoffset = 314;
+      return;
+    }
+    const avg = subs.reduce((sum, s) => sum + (s.total > 0 ? (s.attended/s.total)*100 : 0), 0) / subs.length;
+    const circumference = 314;
+    const offset = circumference - (avg / 100) * circumference;
+    const fill = document.getElementById('gaugeFill');
+    fill.style.strokeDashoffset = offset;
+
+    let color, statusText;
+    if (avg >= globalSettings.safe) {
+      color = 'var(--safe)';
+      statusText = `You're doing great! Overall attendance is healthy.`;
+    } else if (avg >= globalSettings.warn) {
+      color = 'var(--warn)';
+      statusText = `Watch out! Average is slipping. Attend more classes.`;
+    } else {
+      color = 'var(--danger)';
+      statusText = `🚨 Critical average! Immediate action needed.`;
+    }
+    fill.style.stroke = color;
+    document.getElementById('gaugeText').style.color = color;
+    document.getElementById('gaugeText').textContent = avg.toFixed(1) + '%';
+    document.getElementById('gaugeStatus').textContent = statusText;
+  }
+
+  function updateAlert(subs) {
+    const critical = subs.filter(s => {
+      const pct = s.total > 0 ? (s.attended/s.total)*100 : 0;
+      return getRisk(pct, getThreshold(s)) === 'danger';
+    });
+    const banner = document.getElementById('alertBanner');
+    if (critical.length > 0) {
+      document.getElementById('alertText').textContent = `${critical.length} subject${critical.length>1?'s are':' is'} in critical zone: ${critical.map(s=>s.name).join(', ')}`;
+      banner.classList.add('show');
+    } else {
+      banner.classList.remove('show');
+    }
+  }
+
+  function addSubject() {
+    const name = document.getElementById('subjectName').value.trim();
+    const attended = parseInt(document.getElementById('attended').value);
+    const total = parseInt(document.getElementById('total').value);
+
+    if (!name) return shake('subjectName');
+    if (isNaN(attended) || attended < 0) return shake('attended');
+    if (isNaN(total) || total < 0) return shake('total');
+    if (attended > total) return shake('attended');
+
+    const subject = { name, attended, total, circular: circularOn };
+    if (circularOn) {
+      const minRequired = parseInt(document.getElementById('minRequired').value);
+      const minPct = parseInt(document.getElementById('minPct').value);
+      subject.minRequired = isNaN(minRequired) ? null : minRequired;
+      subject.minPct = isNaN(minPct) ? null : minPct;
+    } else {
+      subject.minPct = null;
+    }
+
+    subjects.push(subject);
+    save();
+    render();
+
+    // reset
+    document.getElementById('subjectName').value = '';
+    document.getElementById('attended').value = '';
+    document.getElementById('total').value = '';
+    document.getElementById('minRequired').value = '';
+    document.getElementById('minPct').value = '';
+  }
+
+  function deleteSubject(i) {
+    subjects.splice(i, 1);
+    save();
+    render();
+  }
+
+  function shake(id) {
+    const el = document.getElementById(id);
+    el.style.borderColor = 'var(--danger)';
+    el.style.animation = 'shake 0.3s ease';
+    setTimeout(() => { el.style.borderColor = ''; el.style.animation = ''; }, 600);
+  }
+
+  // Allow Enter key
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') addSubject();
+  });
+
+  function downloadReport() {
+    if (subjects.length === 0) {
+      alert('No subjects to report. Add at least one subject first.');
+      return;
+    }
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-IN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+    const timeStr = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    const avg = subjects.reduce((sum, s) => sum + (s.total > 0 ? (s.attended/s.total)*100 : 0), 0) / subjects.length;
+
+    const statusColor = avg >= globalSettings.safe ? '#00c87a' : avg >= globalSettings.warn ? '#e6a800' : '#e03050';
+    const statusLabel = avg >= globalSettings.safe ? 'HEALTHY' : avg >= globalSettings.warn ? 'AT RISK' : 'CRITICAL';
+
+    const safeCount = subjects.filter(s => { const p = s.total>0?(s.attended/s.total)*100:0; return getRisk(p,getThreshold(s))==='safe'; }).length;
+    const warnCount = subjects.filter(s => { const p = s.total>0?(s.attended/s.total)*100:0; return getRisk(p,getThreshold(s))==='warn'; }).length;
+    const dangerCount = subjects.filter(s => { const p = s.total>0?(s.attended/s.total)*100:0; return getRisk(p,getThreshold(s))==='danger'; }).length;
+
+    const rows = subjects.map(s => {
+      const pct = s.total > 0 ? (s.attended / s.total) * 100 : 0;
+      const threshold = getThreshold(s);
+      const risk = getRisk(pct, threshold);
+      const dutyNeeded = dutyLeavesNeeded(s.attended, s.total, threshold);
+      const needed = classesNeeded(s.attended, s.total, threshold);
+      const bunkable = canBunk(s.attended, s.total, threshold);
+      const impossible = s.circular ? circularImpossible(s.attended, s.total, threshold, s.minRequired) : false;
+      const riskColor = risk === 'safe' ? '#00c87a' : risk === 'warn' ? '#e6a800' : '#e03050';
+      const riskBg = risk === 'safe' ? '#e6fff5' : risk === 'warn' ? '#fffbe6' : '#fff0f3';
+      const riskLabel = risk === 'safe' ? 'SAFE' : risk === 'warn' ? 'AT RISK' : 'CRITICAL';
+
+      let actionText = '';
+      if (impossible) {
+        const rem = Math.max((s.minRequired||s.total)-s.total, 0);
+        const bestPct = s.minRequired ? (((s.attended+rem)/s.minRequired)*100).toFixed(1) : pct.toFixed(1);
+        actionText = `Cannot reach ${threshold}% — best possible: ${bestPct}%. Request condonation from principal.`;
+      } else if (risk === 'safe') {
+        actionText = `Safe. Can skip ${bunkable} more class${bunkable!==1?'es':''}.`;
+      } else {
+        actionText = `Attend ${needed} more class${needed!==1?'es':''}. OR request ${dutyNeeded} duty leave${dutyNeeded!==1?'s':''} from teacher.`;
+      }
+
+      const barWidth = Math.min(pct, 100);
+      return `
+        <tr>
+          <td style="font-weight:600;font-size:13px;padding:14px 12px;border-bottom:1px solid #eee;">${s.name}${s.circular ? ' <span style="font-size:10px;background:#fff3cd;color:#856404;padding:1px 6px;border-radius:10px;">CIRCULAR</span>' : ''}</td>
+          <td style="text-align:center;padding:14px 12px;border-bottom:1px solid #eee;">${s.attended}</td>
+          <td style="text-align:center;padding:14px 12px;border-bottom:1px solid #eee;">${s.total}</td>
+          <td style="padding:14px 12px;border-bottom:1px solid #eee;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="flex:1;height:6px;background:#eee;border-radius:4px;overflow:hidden;min-width:60px;">
+                <div style="width:${barWidth}%;height:100%;background:${riskColor};border-radius:4px;"></div>
+              </div>
+              <span style="font-weight:700;color:${riskColor};min-width:44px;">${pct.toFixed(1)}%</span>
+            </div>
+          </td>
+          <td style="text-align:center;padding:14px 12px;border-bottom:1px solid #eee;">${threshold}%</td>
+          <td style="text-align:center;padding:14px 12px;border-bottom:1px solid #eee;">
+            <span style="background:${riskBg};color:${riskColor};padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:1px;">${riskLabel}</span>
+          </td>
+          <td style="font-size:11px;color:#555;padding:14px 12px;border-bottom:1px solid #eee;">${actionText}</td>
+        </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AttendIQ Report</title>
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f6fa; margin: 0; padding: 32px; color: #222; }
+  .page { max-width: 920px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 4px 32px rgba(0,0,0,0.10); overflow: hidden; }
+  .rpt-header { background: linear-gradient(135deg, #0a0c12 0%, #1a1d35 100%); padding: 36px 40px; color: white; }
+  .logo { font-size: 28px; font-weight: 900; letter-spacing: -1px; margin-bottom: 4px; }
+  .logo span { color: #7c6bff; }
+  .report-meta { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 8px; }
+  .overall-badge { display: inline-flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 20px; margin: 14px 0 10px; }
+  .overall-badge .val { font-size: 26px; font-weight: 900; color: ${statusColor}; }
+  .overall-badge .lbl { font-size: 11px; color: ${statusColor}; font-weight: 700; letter-spacing: 1.5px; }
+  .overall-badge .sub { font-size: 10px; color: rgba(255,255,255,0.4); }
+  .summary { display: flex; border-bottom: 2px solid #f0f0f0; }
+  .sum-box { flex: 1; padding: 22px 24px; border-right: 1px solid #f0f0f0; }
+  .sum-box:last-child { border-right: none; }
+  .sum-label { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #aaa; margin-bottom: 6px; font-weight: 700; }
+  .sum-val { font-size: 30px; font-weight: 900; line-height: 1; }
+  .sum-sub { font-size: 11px; color: #bbb; margin-top: 4px; }
+  .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #aaa; padding: 18px 24px 8px; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: #f8f9fc; }
+  th { padding: 10px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #999; font-weight: 700; text-align: left; border-bottom: 2px solid #eee; }
+  tbody tr:hover { background: #fafbff; }
+  .footer { padding: 18px 24px; background: #f8f9fc; border-top: 1px solid #eee; font-size: 11px; color: #bbb; display: flex; justify-content: space-between; }
+  @media print {
+    body { background: white; padding: 0; }
+    .page { box-shadow: none; border-radius: 0; }
+    tbody tr:hover { background: white; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="rpt-header">
+    <div class="logo">Attend<span>IQ</span></div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:2px;">Attendance Risk Report</div>
+    <div class="overall-badge">
+      <div class="val">${avg.toFixed(1)}%</div>
+      <div>
+        <div class="lbl">${statusLabel}</div>
+        <div class="sub">Overall Average</div>
+      </div>
+    </div>
+    <div class="report-meta">Generated: ${dateStr} at ${timeStr}</div>
+  </div>
+
+  <div class="summary">
+    <div class="sum-box">
+      <div class="sum-label">Total Subjects</div>
+      <div class="sum-val" style="color:#7c6bff;">${subjects.length}</div>
+      <div class="sum-sub">enrolled</div>
+    </div>
+    <div class="sum-box">
+      <div class="sum-label">Safe</div>
+      <div class="sum-val" style="color:#00c87a;">${safeCount}</div>
+      <div class="sum-sub">≥ ${globalSettings.safe}%</div>
+    </div>
+    <div class="sum-box">
+      <div class="sum-label">At Risk</div>
+      <div class="sum-val" style="color:#e6a800;">${warnCount}</div>
+      <div class="sum-sub">${globalSettings.warn}–${globalSettings.safe - 1}%</div>
+    </div>
+    <div class="sum-box">
+      <div class="sum-label">Critical</div>
+      <div class="sum-val" style="color:#e03050;">${dangerCount}</div>
+      <div class="sum-sub">below ${globalSettings.warn}%</div>
+    </div>
+  </div>
+
+  <div class="section-title">Subject-wise Breakdown</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Subject</th>
+        <th>Attended</th>
+        <th>Total</th>
+        <th>Attendance %</th>
+        <th>Min %</th>
+        <th>Status</th>
+        <th>Action Required</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+
+  <div class="footer">
+    <span>AttendIQ — Student Attendance Dashboard</span>
+    <span>${dateStr}</span>
+  </div>
+</div>
+<script>window.onload = () => { window.print(); }<\/script>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `AttendIQ_Report_${now.toISOString().slice(0,10)}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function updateStaticTexts() {
+    const s = globalSettings.safe;
+    const w = globalSettings.warn;
+    document.getElementById('statSubSafe').textContent = s;
+    document.getElementById('statSubWarn1').textContent = w;
+    document.getElementById('statSubSafeMinus1').textContent = s - 1;
+    document.getElementById('statSubWarn2').textContent = w;
+    document.getElementById('tipSafe').textContent = s;
+    document.getElementById('tipWarn1').textContent = w;
+    document.getElementById('tipSafeMinus1').textContent = s - 1;
+    document.getElementById('tipWarn2').textContent = w;
+  }
+
+  function openSettings() {
+    document.getElementById('settingSafe').value = globalSettings.safe;
+    document.getElementById('settingWarn').value = globalSettings.warn;
+    document.getElementById('settingsModal').classList.add('show');
+  }
+
+  function closeSettings() {
+    document.getElementById('settingsModal').classList.remove('show');
+  }
+
+  function saveSettings() {
+    const s = parseInt(document.getElementById('settingSafe').value);
+    const w = parseInt(document.getElementById('settingWarn').value);
+    if (!isNaN(s) && !isNaN(w) && s >= 0 && w >= 0 && s <= 100 && s > w) {
+      globalSettings = { safe: s, warn: w };
+      localStorage.setItem('attendiq_settings', JSON.stringify(globalSettings));
+      closeSettings();
+      updateStaticTexts();
+      render();
+    } else {
+      alert("Invalid thresholds. Ensure Safe > At Risk, and both are between 0-100.");
+    }
+  }
+
+  updateStaticTexts();
+  render();
+</script>
+
+<style>
+@keyframes shake {
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-6px)}
+  40%{transform:translateX(6px)}
+  60%{transform:translateX(-4px)}
+  80%{transform:translateX(4px)}
+}
+</style>
+</body>
+</html>
